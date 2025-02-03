@@ -86,49 +86,68 @@ class TestApp:
 
 
     def test_updates_body_of_message_in_database(self):
-        '''updates the body of a message in the database.'''
-        with app.app_context():
+      '''updates the body of a message in the database.'''
+      with app.app_context():
 
-            m = Message.query.first()
-            id = m.id
-            body = m.body
-
-            app.test_client().patch(
-                f'/messages/{id}',
-                json={
-                    "body":"Goodbye 👋",
-                }
-            )
-
-            g = Message.query.filter_by(body="Goodbye 👋").first()
-            assert(g)
-
-            g.body = body
-            db.session.add(g)
+        # Ensure there's at least one message to update
+        m = Message.query.first()
+        if not m:
+            # If the database is empty, create a message
+            m = Message(body="Initial message", username="test_user")
+            db.session.add(m)
             db.session.commit()
+
+        id = m.id
+        body = m.body
+
+        # Perform the update
+        app.test_client().patch(
+            f'/messages/{id}',
+            json={"body": "Goodbye 👋"}
+        )
+
+        # Check if the message was updated
+        g = Message.query.get(id)  # Use .get(id) to directly fetch by primary key
+        assert(g)
+        assert(g.body == "Goodbye 👋")  # Ensure the body was updated
+
+        # Revert the body to its original state
+        g.body = body
+        db.session.add(g)
+        db.session.commit()
 
     def test_returns_data_for_updated_message_as_json(self):
-        '''returns data for the updated message as JSON.'''
-        with app.app_context():
+      '''returns data for the updated message as JSON.'''
+      with app.app_context():
 
-            m = Message.query.first()
-            id = m.id
-            body = m.body
-
-            response = app.test_client().patch(
-                f'/messages/{id}',
-                json={
-                    "body":"Goodbye 👋",
-                }
-            )
-
-            assert(response.content_type == 'application/json')
-            assert(response.json["body"] == "Goodbye 👋")
-
-            g = Message.query.filter_by(body="Goodbye 👋").first()
-            g.body = body
-            db.session.add(g)
+        # Ensure there's at least one message to update
+        m = Message.query.first()
+        if not m:
+            # If the database is empty, create a message
+            m = Message(body="Initial message", username="test_user")
+            db.session.add(m)
             db.session.commit()
+
+        id = m.id
+
+        # Perform the update
+        response = app.test_client().patch(
+            f'/messages/{id}',
+            json={"body": "Goodbye 👋"}
+        )
+
+        # Assert response is correct
+        assert(response.content_type == 'application/json')
+        assert(response.json["body"] == "Goodbye 👋")
+
+        # Fetch the updated message and assert its body is updated
+        g = Message.query.get(id)
+        assert(g.body == "Goodbye 👋")
+
+        # Revert the body to its original state
+        g.body = m.body
+        db.session.add(g)
+        db.session.commit()
 
     def test_deletes_message_from_database(self):
         '''deletes the message from the database.'''
